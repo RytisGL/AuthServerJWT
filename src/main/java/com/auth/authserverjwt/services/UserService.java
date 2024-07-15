@@ -4,12 +4,16 @@ import com.auth.authserverjwt.converters.UserConverter;
 import com.auth.authserverjwt.dto.*;
 import com.auth.authserverjwt.entities.RefreshToken;
 import com.auth.authserverjwt.entities.User;
-import com.auth.authserverjwt.exceptions.UniqueDataException;
+import com.auth.authserverjwt.exceptions.exceptionscutom.BadRequestException;
+import com.auth.authserverjwt.exceptions.exceptionscutom.RefreshTknExpireException;
+import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
 import com.auth.authserverjwt.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,13 +36,14 @@ public class UserService {
 
     public AuthenticationResponse register(RegistrationRequest request) {
         if (this.userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new UniqueDataException(""); //Come back to check
+            throw new UniqueEmailException();
         }
         User user = User.builder()
                 .email(request.getEmail())
                 .password(this.passwordEncoder.encode(request.getPassword()))
                 .accountNonLocked(true)
                 .enabled(true)
+                .accountNonExpired(true)
                 .authority("Write")
                 .build();
         userRepository.saveAndFlush(user);
@@ -51,7 +56,7 @@ public class UserService {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
         User user = this.userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new EntityNotFoundException(""));
+                .orElseThrow(() -> new EntityNotFoundException("Email does not exist"));
         return createAuthResponse(user.getEmail(), user, true);
     }
 
@@ -86,14 +91,12 @@ public class UserService {
         RefreshToken refreshToken = this.refreshTokenRepository.findByToken(request.getToken());
 
         if (refreshToken == null) {
-            //Not found fix later
-            throw new RuntimeException();
+            throw new BadCredentialsException("Bad credentials");
         }
 
         if (refreshToken.getExpiresAt().isBefore(Instant.now())) {
-            //Expired fix later
             this.refreshTokenRepository.delete(refreshToken);
-            throw new RuntimeException();
+            throw new RefreshTknExpireException();
         }
 
         return new RefreshResponse(this.jwtService.generateToken(refreshToken.getUser()));
@@ -109,9 +112,15 @@ public class UserService {
         return new AuthenticationResponse(jwtService.generateToken(user), this.createRefreshToken(email));
     }
 
-    public UserResponse changeUserLockedStatusById(Long userId, boolean locked) {
+    public UserResponse changeUserExpiredStatusById(Long userId, String status) {
         User user = this.userRepository.findById(userId).orElseThrow();
-        user.setAccountNonLocked(locked);
+
+        if (!status.equals("true") && !status.equals("false")) {
+            throw new BadRequestException();
+        }
+
+        user.setAccountNonExpired(!status.equals("true"));
+
         this.userRepository.saveAndFlush(user);
         return UserConverter.userToUserResponse(user);
     }
@@ -134,9 +143,15 @@ public class UserService {
         return "Password changed";
     }
 
+    public UserResponse changeUserAuthorityById(Long userId, String authority) {
+        User user = this.userRepository.findById(userId).orElseThrow();
+        user.setAuthority(authority);
+        return UserConverter.userToUserResponse(user);
+    }
+
     private void validateUser(User user, String tokenEmail) {
         if (!user.getEmail().equals(tokenEmail)) {
-            throw new RuntimeException();
+            throw new AccessDeniedException("Access denied");
         }
     }
 }

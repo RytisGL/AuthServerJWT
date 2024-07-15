@@ -19,6 +19,7 @@ public class OrderLowControllerAdvice extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleUnspecifiedException(Exception ex, WebRequest request) {
         ProblemDetail body = this.createProblemDetail(ex, INTERNAL_SERVER_ERROR, "Internal server error", null,
                 null, request);
+        System.out.println(ex);
         return new ResponseEntity<>(body, INTERNAL_SERVER_ERROR);
     }
 }

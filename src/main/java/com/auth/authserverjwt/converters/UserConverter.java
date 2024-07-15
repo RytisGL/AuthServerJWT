@@ -19,6 +19,9 @@ public abstract class UserConverter {
         userResponse.setEnabled(user.isEnabled());
         userResponse.setCreatedAt(user.getCreatedAt());
         userResponse.setUpdatedAt(user.getUpdatedAt());
+        userResponse.setManuallyNonLocked(user.isAccountNonExpired());
+        userResponse.setLoginAttempts(user.getLoginAttempts());
+        userResponse.setAutoLockedAt(user.getAutoLockedAt());
         return userResponse;
     }
 

@@ -31,7 +31,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
             http.cors(corsCustomizer -> corsCustomizer.configurationSource(corsConfigurationSource()))
+                    //Csrf protection not needed
                 .csrf(AbstractHttpConfigurer::disable)
+                    //Disable form login
+                    .formLogin(AbstractHttpConfigurer::disable)
+                    //Disable http basic login
+                    .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeHttpRequests ->
                         authorizeHttpRequests
                                 .requestMatchers("/v3/**", "/swagger-ui/**").permitAll()
