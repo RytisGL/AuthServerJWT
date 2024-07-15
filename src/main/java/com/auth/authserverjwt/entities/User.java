@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -34,8 +35,16 @@ public class User implements UserDetails {
     @NotNull
     private String authority;
 
+    private int loginAttempts;
+    private Date autoLockedAt;
+
+    //Automatic brute force lock
     private boolean accountNonLocked;
+    //Email verification
     private boolean enabled;
+    //Manual account lock
+    @Column(name = "manually_non_locked")
+    private boolean accountNonExpired;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -59,7 +68,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return this.accountNonExpired;
     }
 
     @Override

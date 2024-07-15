@@ -50,14 +50,21 @@ public class UserController {
 
     @PreAuthorize("hasAuthority('Admin')")
     @PatchMapping("/{userId}/lock")
-    public ResponseEntity<UserResponse> lockUserById(@PathVariable Long userId) {
-        return ResponseEntity.ok(this.userService.changeUserLockedStatusById(userId, false));
+    public ResponseEntity<UserResponse> lockUserById(@PathVariable Long userId,
+                                                     @RequestParam(value = "status") String status) {
+        return ResponseEntity.ok(this.userService.changeUserExpiredStatusById(userId, status));
     }
 
+//    @PreAuthorize("hasAuthority('Admin')")
+//    @PatchMapping("/{userId}/unlock")
+//    public ResponseEntity<UserResponse> unLockUserById(@PathVariable Long userId) {
+//        return ResponseEntity.ok(this.userService.changeUserLockedStatusById(userId, true));
+//    }
+
     @PreAuthorize("hasAuthority('Admin')")
-    @PatchMapping("/{userId}/unlock")
-    public ResponseEntity<UserResponse> unLockUserById(@PathVariable Long userId) {
-        return ResponseEntity.ok(this.userService.changeUserLockedStatusById(userId, true));
+    @PatchMapping("/{userId}/authority")
+    public ResponseEntity<UserResponse> changeUserAuthority(@PathVariable Long userId, String authority) {
+        return ResponseEntity.ok(this.userService.changeUserAuthorityById(userId, authority));
     }
 
     @PreAuthorize("hasAuthority('Admin')")
