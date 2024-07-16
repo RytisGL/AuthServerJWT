@@ -24,6 +24,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -112,7 +113,8 @@ public class OrderHighControllerAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(LockedException.class)
     protected ResponseEntity<Object> handleLockedException(LockedException ex, WebRequest request) {
-        ProblemDetail body = this.createProblemDetail(ex, UNAUTHORIZED, "Too many login attempts", null,
+        ProblemDetail body = this.createProblemDetail(ex, UNAUTHORIZED, "Too many login attempts, account locked for " +
+                        "10 minutes", null,
                 null, request);
 
         return new ResponseEntity<>(body, UNAUTHORIZED);

@@ -10,18 +10,22 @@ import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
 import com.auth.authserverjwt.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -51,12 +55,28 @@ public class UserService {
         return createAuthResponse(user.getEmail(), user, false);
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        this.authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-
+    public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletRequest httpRequest) {
+        //Future work bellow
+        httpRequest.getRemoteUser(); // <---- check ip against db
+        try {
+            this.authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (BadCredentialsException e) {
+            checkLoginAttempts(request.getEmail());
+            throw e;
+        } catch (LockedException ex) {
+            if (isAutoAccountLockExpired(request.getEmail())) {
+                authenticate(request, httpRequest);
+            } else {
+                throw ex;
+            }
+        }
         User user = this.userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new EntityNotFoundException("Email does not exist"));
+        if (user.getLoginAttempts() > 0) {
+            user.setLoginAttempts(0);
+            this.userRepository.saveAndFlush(user);
+        }
         return createAuthResponse(user.getEmail(), user, true);
     }
 
@@ -153,5 +173,37 @@ public class UserService {
         if (!user.getEmail().equals(tokenEmail)) {
             throw new AccessDeniedException("Access denied");
         }
+    }
+
+    private void checkLoginAttempts(String email) {
+        Optional<User> userOptional = this.userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            int logInAttempts = 5;
+            if (user.getLoginAttempts() < logInAttempts) {
+                user.setLoginAttempts(user.getLoginAttempts() + 1);
+            } else {
+                user.setAutoLockedAt(LocalDateTime.now());
+                user.setAccountNonLocked(false);
+            }
+            this.userRepository.saveAndFlush(user);
+        }
+    }
+
+    public boolean isAutoAccountLockExpired(String email) {
+        Optional<User> userOptional = this.userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            LocalDateTime timeLocked = user.getAutoLockedAt();
+            long lockTime = 10;
+            if (timeLocked != null && timeLocked.isBefore(LocalDateTime.now().minusMinutes(lockTime))) {
+                user.setAutoLockedAt(null);
+                user.setAccountNonLocked(true);
+                user.setLoginAttempts(0);
+                this.userRepository.saveAndFlush(user);
+                return true;
+            }
+        }
+        return false;
     }
 }

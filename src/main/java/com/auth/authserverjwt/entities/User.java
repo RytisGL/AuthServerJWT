@@ -10,7 +10,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.sql.Date;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -36,7 +35,7 @@ public class User implements UserDetails {
     private String authority;
 
     private int loginAttempts;
-    private Date autoLockedAt;
+    private LocalDateTime autoLockedAt;
 
     //Automatic brute force lock
     private boolean accountNonLocked;

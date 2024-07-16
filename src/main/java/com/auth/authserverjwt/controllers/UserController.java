@@ -2,6 +2,7 @@ package com.auth.authserverjwt.controllers;
 
 import com.auth.authserverjwt.dto.*;
 import com.auth.authserverjwt.services.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,8 +26,9 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request) {
-        return ResponseEntity.ok(this.userService.authenticate(request));
+    public ResponseEntity<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request,
+                                                               HttpServletRequest httpServletRequest) {
+        return ResponseEntity.ok(this.userService.authenticate(request, httpServletRequest));
     }
 
     @PostMapping("token/refresh")
