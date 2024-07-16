@@ -33,10 +33,10 @@ public class SecurityConfig {
             http.cors(corsCustomizer -> corsCustomizer.configurationSource(corsConfigurationSource()))
                     //Csrf protection not needed
                 .csrf(AbstractHttpConfigurer::disable)
-                    //Disable form login
-                    .formLogin(AbstractHttpConfigurer::disable)
                     //Disable http basic login
                     .httpBasic(AbstractHttpConfigurer::disable)
+                    //Disable login form
+                    .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeHttpRequests ->
                         authorizeHttpRequests
                                 .requestMatchers("/v3/**", "/swagger-ui/**").permitAll()
