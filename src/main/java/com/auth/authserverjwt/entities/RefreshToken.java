@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 public class RefreshToken {
     @Id
-    @GeneratedValue (strategy = GenerationType.SEQUENCE)
+    @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
     private String token;
     private Instant expiresAt;
