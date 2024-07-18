@@ -61,10 +61,7 @@ public class UserService {
         try {
             this.authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        } catch (BadCredentialsException e) {
-            checkLoginAttempts(request.getEmail());
-            throw e;
-        } catch (LockedException ex) {
+        }  catch (LockedException ex) {
             if (isAutoAccountLockExpired(request.getEmail())) {
                 authenticate(request, httpRequest);
             } else {
@@ -169,13 +166,7 @@ public class UserService {
         return UserConverter.userToUserResponse(user);
     }
 
-    private void validateUser(User user, String tokenEmail) {
-        if (!user.getEmail().equals(tokenEmail)) {
-            throw new AccessDeniedException("Access denied");
-        }
-    }
-
-    private void checkLoginAttempts(String email) {
+    public void checkLoginAttempts(String email) {
         Optional<User> userOptional = this.userRepository.findByEmail(email);
         if (userOptional.isPresent()) {
             User user = userOptional.get();
@@ -187,6 +178,12 @@ public class UserService {
                 user.setAccountNonLocked(false);
             }
             this.userRepository.saveAndFlush(user);
+        }
+    }
+
+    private void validateUser(User user, String tokenEmail) {
+        if (!user.getEmail().equals(tokenEmail)) {
+            throw new AccessDeniedException("Access denied");
         }
     }
 

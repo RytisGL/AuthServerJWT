@@ -31,6 +31,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
             http.cors(corsCustomizer -> corsCustomizer.configurationSource(corsConfigurationSource()))
+                    //HTTPS traffic only
+//                    .requiresChannel(rcc -> rcc.anyRequest().requiresSecure())
                     //Csrf protection not needed
                 .csrf(AbstractHttpConfigurer::disable)
                     //Disable http basic login
