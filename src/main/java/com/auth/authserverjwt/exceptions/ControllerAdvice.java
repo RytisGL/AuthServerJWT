@@ -1,4 +1,4 @@
-package com.auth.authserverjwt.exceptions.controlleradvice;
+package com.auth.authserverjwt.exceptions;
 
 import com.auth.authserverjwt.exceptions.exceptionscutom.BadRequestException;
 import com.auth.authserverjwt.exceptions.exceptionscutom.RefreshTknExpireException;
@@ -12,10 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,7 +21,6 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -39,8 +35,8 @@ import static org.springframework.http.HttpStatus.*;
 
 @Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE)
-@ControllerAdvice
-public class OrderHighControllerAdvice extends ResponseEntityExceptionHandler {
+@org.springframework.web.bind.annotation.ControllerAdvice
+public class ControllerAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(UniqueEmailException.class)
     protected ResponseEntity<Object> handleUniqueDataException(WebRequest request) {
@@ -215,6 +211,19 @@ public class OrderHighControllerAdvice extends ResponseEntityExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(validationErrorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @Order()
+    @ExceptionHandler(Exception.class)
+    protected ResponseEntity<Object> handleUnspecifiedException(WebRequest request) {
+        BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
+                .statusCode(INTERNAL_SERVER_ERROR.value())
+                .error("Exception")
+                .message("Internal server error")
+                .path(request.getDescription(false))
+                .build();
+
+        return new ResponseEntity<>(baseErrorResponse, INTERNAL_SERVER_ERROR);
     }
 
     private Map<String, List<String>> convertFieldErrors(MethodArgumentNotValidException ex) {

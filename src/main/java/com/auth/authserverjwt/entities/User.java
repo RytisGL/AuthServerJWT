@@ -1,5 +1,6 @@
 package com.auth.authserverjwt.entities;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -29,6 +30,7 @@ public class User implements UserDetails {
     @NotNull
     private String email;
     @NotNull
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     @Size(max = 50)
     @NotNull

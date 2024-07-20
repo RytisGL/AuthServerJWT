@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.context.request.WebRequest;
 
 import java.util.List;
 
@@ -43,11 +42,10 @@ public class UserController {
         return ResponseEntity.ok(this.userService.getUsers(email));
     }
 
-    @PreAuthorize("hasAuthority('User')")
-    @PatchMapping("/{userId}/password/change")
-    public ResponseEntity<String> changePassword(@PathVariable Long userId,
-                                                 @Valid @RequestBody PasswordChangeRequest request, WebRequest webRequest) {
-        return ResponseEntity.ok(this.userService.changePassword(userId, request, webRequest));
+    @PreAuthorize("hasAuthority('Write')")
+    @PatchMapping("/password/change")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody PasswordChangeRequest request) {
+        return ResponseEntity.ok(this.userService.changePassword(request));
     }
 
     @PreAuthorize("hasAuthority('Admin')")
