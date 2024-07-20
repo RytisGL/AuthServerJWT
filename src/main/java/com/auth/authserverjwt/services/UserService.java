@@ -12,19 +12,17 @@ import com.auth.authserverjwt.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.WebRequest;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,8 +54,6 @@ public class UserService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletRequest httpRequest) {
-        //Future work bellow
-        httpRequest.getRemoteUser(); // <---- check ip against db
         try {
             this.authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
@@ -142,13 +138,9 @@ public class UserService {
         return UserConverter.userToUserResponse(user);
     }
 
-    public String changePassword(Long userId, PasswordChangeRequest request, WebRequest webRequest) {
-        User user = this.userRepository.findById(userId).orElseThrow();
-        String tokenEmail = this.jwtService.extractUsername(Objects
-                .requireNonNull(webRequest
-                        .getHeader("Authorization")).substring(7));
-
-        validateUser(user, tokenEmail);
+    public String changePassword(PasswordChangeRequest request) {
+        User user = this.userRepository.findByEmail(
+                SecurityContextHolder.getContext().getAuthentication().getName()).orElseThrow();
 
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             return "Wrong password";
@@ -178,12 +170,6 @@ public class UserService {
                 user.setAccountNonLocked(false);
             }
             this.userRepository.saveAndFlush(user);
-        }
-    }
-
-    private void validateUser(User user, String tokenEmail) {
-        if (!user.getEmail().equals(tokenEmail)) {
-            throw new AccessDeniedException("Access denied");
         }
     }
 
