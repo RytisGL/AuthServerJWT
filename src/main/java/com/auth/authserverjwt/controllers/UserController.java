@@ -25,9 +25,8 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request,
-                                                               HttpServletRequest httpServletRequest) {
-        return ResponseEntity.ok(this.userService.authenticate(request, httpServletRequest));
+    public ResponseEntity<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request) {
+        return ResponseEntity.ok(this.userService.authenticate(request));
     }
 
     @PostMapping("token/refresh")

@@ -10,7 +10,6 @@ import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
 import com.auth.authserverjwt.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -50,16 +49,16 @@ public class UserService {
                 .build();
         userRepository.saveAndFlush(user);
 
-        return createAuthResponse(user.getEmail(), user, false);
+        return createAuthResponse(user, false);
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletRequest httpRequest) {
+    public AuthenticationResponse authenticate(AuthenticationRequest request) {
         try {
             this.authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         }  catch (LockedException ex) {
             if (isAutoAccountLockExpired(request.getEmail())) {
-                authenticate(request, httpRequest);
+                this.authenticate(request);
             } else {
                 throw ex;
             }
@@ -70,7 +69,7 @@ public class UserService {
             user.setLoginAttempts(0);
             this.userRepository.saveAndFlush(user);
         }
-        return createAuthResponse(user.getEmail(), user, true);
+        return createAuthResponse(user, true);
     }
 
     public List<UserResponse> getUsers(String email) {
@@ -86,21 +85,8 @@ public class UserService {
         return UserConverter.userToUserResponse(user);
     }
 
-    public String createRefreshToken(String email) {
-        String token = UUID.randomUUID().toString();
-
-        RefreshToken refreshToken = RefreshToken.builder()
-                .user(this.userRepository.findByEmail(email).orElseThrow())
-                .expiresAt(Instant.now().plusMillis(18000000))
-                .token(token)
-                .build();
-
-        this.refreshTokenRepository.saveAndFlush(refreshToken);
-
-        return token;
-    }
-
     public RefreshResponse refreshToken(TokenRefreshRequest request) {
+        //future check returns null for sure?
         RefreshToken refreshToken = this.refreshTokenRepository.findByToken(request.getToken());
 
         if (refreshToken == null) {
@@ -115,14 +101,14 @@ public class UserService {
         return new RefreshResponse(this.jwtService.generateToken(refreshToken.getUser()));
     }
 
-    private AuthenticationResponse createAuthResponse(String email, User user, boolean existingUser) {
+    private AuthenticationResponse createAuthResponse(User user, boolean existingUser) {
         if (existingUser) {
             RefreshToken refreshToken = this.refreshTokenRepository.findByUser(user);
             if (refreshToken != null) {
                 this.refreshTokenRepository.delete(refreshToken);
             }
         }
-        return new AuthenticationResponse(jwtService.generateToken(user), this.createRefreshToken(email));
+        return new AuthenticationResponse(jwtService.generateToken(user), this.createRefreshToken(user));
     }
 
     public UserResponse changeUserExpiredStatusById(Long userId, String status) {
@@ -139,6 +125,7 @@ public class UserService {
     }
 
     public String changePassword(PasswordChangeRequest request) {
+        //Weird situation if exception thrown, what to do?
         User user = this.userRepository.findByEmail(
                 SecurityContextHolder.getContext().getAuthentication().getName()).orElseThrow();
 
@@ -155,6 +142,7 @@ public class UserService {
     public UserResponse changeUserAuthorityById(Long userId, String authority) {
         User user = this.userRepository.findById(userId).orElseThrow();
         user.setAuthority(authority);
+        this.userRepository.saveAndFlush(user);
         return UserConverter.userToUserResponse(user);
     }
 
@@ -188,5 +176,19 @@ public class UserService {
             }
         }
         return false;
+    }
+
+    private String createRefreshToken(User user) {
+        String token = UUID.randomUUID().toString();
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .user(user)
+                .expiresAt(Instant.now().plusMillis(18000000))
+                .token(token)
+                .build();
+
+        this.refreshTokenRepository.saveAndFlush(refreshToken);
+
+        return token;
     }
 }
