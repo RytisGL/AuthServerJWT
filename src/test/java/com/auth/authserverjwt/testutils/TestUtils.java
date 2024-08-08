@@ -1,6 +1,7 @@
 package com.auth.authserverjwt.testutils;
 
 import com.auth.authserverjwt.dto.AuthenticationRequest;
+import com.auth.authserverjwt.dto.PasswordChangeRequest;
 import com.auth.authserverjwt.dto.RegistrationRequest;
 import com.auth.authserverjwt.dto.TokenRefreshRequest;
 import com.auth.authserverjwt.entities.RefreshToken;
@@ -24,6 +25,13 @@ public class TestUtils {
                 .updatedAt(LocalDateTime.now())
                 .enabled(true)
                 .accountNonExpired(true)
+                .build();
+    }
+
+    public static PasswordChangeRequest getTestPasswordChangeRequest() {
+        return PasswordChangeRequest.builder()
+                .newPassword("test")
+                .oldPassword("password")
                 .build();
     }
 

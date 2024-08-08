@@ -3,6 +3,7 @@ package com.auth.authserverjwt.services;
 import com.auth.authserverjwt.dto.*;
 import com.auth.authserverjwt.entities.RefreshToken;
 import com.auth.authserverjwt.entities.User;
+import com.auth.authserverjwt.exceptions.exceptionscutom.BadRequestException;
 import com.auth.authserverjwt.exceptions.exceptionscutom.RefreshTknExpireException;
 import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ContextConfiguration;
@@ -55,6 +57,7 @@ class UserServiceTest {
     private RefreshToken refreshToken;
     private TokenRefreshRequest tokenRefreshRequest;
     private final Long id = 1L;
+    private PasswordChangeRequest passwordChangeRequest;
 
     @BeforeEach
     public void setup() {
@@ -63,6 +66,13 @@ class UserServiceTest {
         this.registrationRequest = TestUtils.getRegistrationRequest();
         this.refreshToken = TestUtils.getRefreshToken();
         this.tokenRefreshRequest = TestUtils.getTokenRefreshRequest();
+        this.passwordChangeRequest = TestUtils.getTestPasswordChangeRequest();
+    }
+
+    @BeforeEach
+    public void initSecurityContext() {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("test@test.test",
+                "password"));
     }
 
     @Test
@@ -111,9 +121,7 @@ class UserServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        assertThrows(BadCredentialsException.class, () -> {
-            userService.authenticate(request);
-        });
+        assertThrows(BadCredentialsException.class, () -> userService.authenticate(request));
 
         verify(authenticationManager, times(1))
                 .authenticate(argThat(token ->
@@ -167,7 +175,7 @@ class UserServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThrows(NoSuchElementException.class, () -> userService.deleteUserById(id));
-        verify(userRepository, times(1)).findById(id);
+        verify(userRepository, never()).delete(user);
     }
 
     @Test
@@ -197,7 +205,73 @@ class UserServiceTest {
     }
 
     @Test
-    void testChangeUserExpiredStatusByIdSuccess() {
+    void testChangeUserExpiredStatusByIdSuccessFalse() {
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        UserResponse userResponse = this.userService.changeUserExpiredStatusById(id, "false");
+
+        assertTrue(userResponse.isManuallyNonLocked());
+        verify(userRepository, times(1)).saveAndFlush(user);
+    }
+
+    @Test
+    void testChangeUserExpiredStatusByIdSuccessTrue() {
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        UserResponse userResponse = this.userService.changeUserExpiredStatusById(id, "true");
+
+        assertFalse(userResponse.isManuallyNonLocked());
+        verify(userRepository, times(1)).saveAndFlush(user);
+    }
+
+    @Test
+    void testChangeUserExpiredStatusByIdBadRequestException() {
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+        assertThrows(BadRequestException.class, () -> this.userService.changeUserExpiredStatusById(id, "test"));
+
+        verify(userRepository, never()).saveAndFlush(any(User.class));
+    }
+
+    @Test
+    void testChangeUserExpiredStatusByIdNoSuchElementException() {
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(NoSuchElementException.class, () -> this.userService.changeUserExpiredStatusById(id, "test"));
+
+        verify(userRepository, never()).saveAndFlush(any(User.class));
+    }
+
+    @Test
+    void testChangePasswordSuccess() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
+
+        String result = this.userService.changePassword(passwordChangeRequest);
+
+        assertEquals("Password changed", result);
+        verify(userRepository, times(1)).saveAndFlush(user);
+    }
+
+    @Test
+    void testChangePasswordWrongPassword() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(false);
+
+        String result = this.userService.changePassword(passwordChangeRequest);
+
+        assertEquals("Wrong password", result);
+        verify(userRepository, never()).saveAndFlush(user);
+    }
+
+    @Test
+    void testChangePasswordNoSuchElementException() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+
+        assertThrows(NoSuchElementException.class, () -> this.userService.changePassword(passwordChangeRequest));
+    }
+
+    @Test
+    void testChangeUserAuthorityByIdSuccess() {
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
 
         UserResponse userResponse = this.userService.changeUserAuthorityById(id, "test");
@@ -207,30 +281,11 @@ class UserServiceTest {
     }
 
     @Test
-    void testChangeUserExpiredStatusByIdNoSuchElementException() {
-    }
-
-    @Test
-    void testChangePasswordSuccess() {
-    }
-
-    @Test
-    void testChangePasswordFailure() {
-    }
-
-    @Test
-    void testChangeUserAuthorityByIdSuccess() {
-    }
-
-    @Test
     void testChangeUserAuthorityByIdNoSuchElementException() {
-    }
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
 
-    @Test
-    void checkLoginAttempts() {
-    }
+        assertThrows(NoSuchElementException.class, () -> this.userService.changeUserAuthorityById(id, "test"));
 
-    @Test
-    void isAutoAccountLockExpired() {
+        verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 }

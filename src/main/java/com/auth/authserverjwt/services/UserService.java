@@ -148,6 +148,7 @@ public class UserService {
 
     public void checkLoginAttempts(String email) {
         Optional<User> userOptional = this.userRepository.findByEmail(email);
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             int logInAttempts = 5;
