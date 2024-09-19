@@ -2,7 +2,7 @@ package com.auth.authserverjwt.controllers;
 
 import com.auth.authserverjwt.dto.*;
 import com.auth.authserverjwt.services.UserService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.nimbusds.jose.jwk.JWKSet;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,13 +11,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("api/v1/users")
+@RequestMapping("api/v1/user")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
+
 
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegistrationRequest request) {
@@ -41,7 +43,6 @@ public class UserController {
         return ResponseEntity.ok(this.userService.getUsers(email));
     }
 
-    @PreAuthorize("hasAuthority('Write')")
     @PatchMapping("/password/change")
     public ResponseEntity<String> changePassword(@Valid @RequestBody PasswordChangeRequest request) {
         return ResponseEntity.ok(this.userService.changePassword(request));
@@ -70,5 +71,10 @@ public class UserController {
     @DeleteMapping("/{userId}")
     public ResponseEntity<UserResponse> deleteUserById(@PathVariable Long userId) {
         return ResponseEntity.ok(this.userService.deleteUserById(userId));
+    }
+
+    @GetMapping("/oauth2/jwks")
+    public ResponseEntity<Map<String, Object>> getJwks() {
+        return ResponseEntity.ok(this.userService.getJwks());
     }
 }

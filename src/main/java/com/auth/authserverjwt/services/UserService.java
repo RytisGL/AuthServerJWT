@@ -9,6 +9,7 @@ import com.auth.authserverjwt.exceptions.exceptionscutom.RefreshTknExpireExcepti
 import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
 import com.auth.authserverjwt.repositories.UserRepository;
+import com.nimbusds.jose.jwk.JWKSet;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,7 @@ public class UserService {
     private final JWTService jwtService;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final JWKSet jwkSet;
 
     public AuthenticationResponse register(RegistrationRequest request) {
         if (this.userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -45,7 +48,7 @@ public class UserService {
                 .accountNonLocked(true)
                 .enabled(true)
                 .accountNonExpired(true)
-                .authority("Write")
+                .authority("Normal")
                 .build();
         userRepository.saveAndFlush(user);
 
@@ -108,7 +111,11 @@ public class UserService {
                 this.refreshTokenRepository.delete(refreshToken);
             }
         }
-        return new AuthenticationResponse(jwtService.generateToken(user), this.createRefreshToken(user));
+
+        return  AuthenticationResponse.builder()
+                .jwtToken(jwtService.generateToken(user))
+                .refreshToken(this.createRefreshToken(user))
+                .build();
     }
 
     public UserResponse changeUserExpiredStatusById(Long userId, String status) {
@@ -179,15 +186,17 @@ public class UserService {
         return false;
     }
 
+    public Map<String, Object> getJwks() {
+        return this.jwkSet.toJSONObject();
+    }
+
     private String createRefreshToken(User user) {
         String token = UUID.randomUUID().toString();
-
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)
                 .expiresAt(Instant.now().plusMillis(18000000))
                 .token(token)
                 .build();
-
         this.refreshTokenRepository.saveAndFlush(refreshToken);
 
         return token;

@@ -213,9 +213,11 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(validationErrorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    //SignatureException <---------------When JWT is corrupt
+
     @Order()
     @ExceptionHandler(Exception.class)
-    protected ResponseEntity<Object> handleUnspecifiedException(WebRequest request) {
+    protected ResponseEntity<Object> handleUnspecifiedException(WebRequest request, Exception ex) {
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(INTERNAL_SERVER_ERROR.value())
                 .error("Exception")

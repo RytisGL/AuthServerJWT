@@ -1,20 +1,20 @@
 package com.auth.authserverjwt.services;
 
+import com.auth.authserverjwt.utils.KeyUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.GrantedAuthority;
 
-import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-@SuppressWarnings("deprecation")
 @Service
 public class JWTService {
 
@@ -45,26 +45,30 @@ public class JWTService {
     }
 
     private String generateToken(Map<String, Object> claims, UserDetails userDetails) {
+
+        List<String> authorities = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        claims.put("authorities", authorities);
+
         return Jwts
                 .builder()
                 .setClaims(claims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + System.getenv("JWT_EXPIRATION")))
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + Long.parseLong(System.getenv("JWT_EXPIRATION"))))
+                .signWith(KeyUtils.getSignInKey(), SignatureAlgorithm.RS256)
                 .compact();
     }
 
     private Claims extractClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(this.getSignInKey())
+                .setSigningKey(KeyUtils.getSignInKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
     }
 
-    private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(System.getenv("SECRET_KEY"));
-        return Keys.hmacShaKeyFor(keyBytes);
-    }
+
 }
