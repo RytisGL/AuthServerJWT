@@ -9,12 +9,15 @@ import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.repositories.RefreshTokenRepository;
 import com.auth.authserverjwt.repositories.UserRepository;
 import com.auth.authserverjwt.testutils.TestUtils;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -55,9 +58,10 @@ class UserServiceTest {
     private AuthenticationRequest authenticationRequest;
     private RegistrationRequest registrationRequest;
     private RefreshToken refreshToken;
-    private TokenRefreshRequest tokenRefreshRequest;
     private final Long id = 1L;
     private PasswordChangeRequest passwordChangeRequest;
+    private MockHttpServletResponse  responseMock;
+    private MockHttpServletRequest requestMock;
 
     @BeforeEach
     public void setup() {
@@ -65,8 +69,9 @@ class UserServiceTest {
         this.authenticationRequest = TestUtils.getAuthenticationRequest();
         this.registrationRequest = TestUtils.getRegistrationRequest();
         this.refreshToken = TestUtils.getRefreshToken();
-        this.tokenRefreshRequest = TestUtils.getTokenRefreshRequest();
         this.passwordChangeRequest = TestUtils.getTestPasswordChangeRequest();
+        this.responseMock = new MockHttpServletResponse();
+        this.requestMock = new MockHttpServletRequest();
     }
 
     @BeforeEach
@@ -82,11 +87,12 @@ class UserServiceTest {
         when(jwtService.generateToken(any(User.class))).thenReturn("jwtToken");
         when(userRepository.saveAndFlush(any(User.class))).thenReturn(user);
 
-        AuthenticationResponse authenticationResponse = userService.register(registrationRequest);
+        AuthenticationResponse authenticationResponse = userService.register(registrationRequest, responseMock);
 
         assertNotNull(authenticationResponse);
         assertEquals("jwtToken", authenticationResponse.getJwtToken());
-        assertNotNull(authenticationResponse.getRefreshToken());
+        assertNotNull(responseMock.getCookie("refreshToken"));
+        assertNotNull(authenticationResponse.getExpiresIn());
         verify(userRepository).saveAndFlush(any(User.class));
     }
 
@@ -94,7 +100,7 @@ class UserServiceTest {
     void testRegisterEmailAlreadyExists() {
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(user));
 
-        assertThrows(UniqueEmailException.class, () -> userService.register(registrationRequest));
+        assertThrows(UniqueEmailException.class, () -> userService.register(registrationRequest, responseMock));
         verify(userRepository, never()).saveAndFlush(any(User.class));
     }
 
@@ -105,11 +111,11 @@ class UserServiceTest {
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(user));
         when(jwtService.generateToken(any(User.class))).thenReturn("jwtToken");
 
-        AuthenticationResponse response = userService.authenticate(authenticationRequest);
+        AuthenticationResponse response = userService.authenticate(authenticationRequest, responseMock);
 
         assertNotNull(response);
         assertEquals("jwtToken", response.getJwtToken());
-        assertNotNull(response.getRefreshToken());
+        assertNotNull(responseMock.getCookie("refreshToken"));
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
 
@@ -121,7 +127,7 @@ class UserServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        assertThrows(BadCredentialsException.class, () -> userService.authenticate(request));
+        assertThrows(BadCredentialsException.class, () -> userService.authenticate(request, responseMock));
 
         verify(authenticationManager, times(1))
                 .authenticate(argThat(token ->
@@ -180,35 +186,38 @@ class UserServiceTest {
 
     @Test
     void testRefreshTokenSuccess() {
+        requestMock.setCookies(new Cookie("refreshToken", "test"));
         when(this.refreshTokenRepository.findByToken(anyString())).thenReturn(refreshToken);
         when(this.jwtService.generateToken(any(UserDetails.class))).thenReturn("JWT token");
 
-        RefreshResponse token = this.userService.refreshToken(tokenRefreshRequest);
+        AuthenticationResponse authenticationResponse = this.userService.refreshToken(requestMock);
 
-        assertEquals("JWT token", token.getJwtToken());
+        assertEquals("JWT token", authenticationResponse.getJwtToken());
     }
 
     @Test
     void testRefreshTokenBadCredentialException() {
+        requestMock.setCookies(new Cookie("refreshToken", "test"));
         when(this.refreshTokenRepository.findByToken(anyString())).thenReturn(null);
 
-        assertThrows(BadCredentialsException.class, () -> this.userService.refreshToken(tokenRefreshRequest));
+        assertThrows(BadCredentialsException.class, () -> this.userService.refreshToken(requestMock));
     }
 
     @Test
     void testRefreshTokenRefreshTknExpiredException() {
+        requestMock.setCookies(new Cookie("refreshToken", "test"));
         refreshToken.setExpiresAt(Instant.now().minusSeconds(60));
 
         when(this.refreshTokenRepository.findByToken(any())).thenReturn(refreshToken);
 
-        assertThrows(RefreshTknExpireException.class, () -> this.userService.refreshToken(tokenRefreshRequest));
+        assertThrows(RefreshTknExpireException.class, () -> this.userService.refreshToken(requestMock));
     }
 
     @Test
     void testChangeUserExpiredStatusByIdSuccessFalse() {
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
 
-        UserResponse userResponse = this.userService.changeUserExpiredStatusById(id, "false");
+        UserResponse userResponse = this.userService.changeExpiredStatusById(id, "false");
 
         assertTrue(userResponse.isManuallyNonLocked());
         verify(userRepository, times(1)).saveAndFlush(user);
@@ -218,7 +227,7 @@ class UserServiceTest {
     void testChangeUserExpiredStatusByIdSuccessTrue() {
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
 
-        UserResponse userResponse = this.userService.changeUserExpiredStatusById(id, "true");
+        UserResponse userResponse = this.userService.changeExpiredStatusById(id, "true");
 
         assertFalse(userResponse.isManuallyNonLocked());
         verify(userRepository, times(1)).saveAndFlush(user);
@@ -227,7 +236,7 @@ class UserServiceTest {
     @Test
     void testChangeUserExpiredStatusByIdBadRequestException() {
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
-        assertThrows(BadRequestException.class, () -> this.userService.changeUserExpiredStatusById(id, "test"));
+        assertThrows(BadRequestException.class, () -> this.userService.changeExpiredStatusById(id, "test"));
 
         verify(userRepository, never()).saveAndFlush(any(User.class));
     }
@@ -236,7 +245,7 @@ class UserServiceTest {
     void testChangeUserExpiredStatusByIdNoSuchElementException() {
         when(userRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> this.userService.changeUserExpiredStatusById(id, "test"));
+        assertThrows(NoSuchElementException.class, () -> this.userService.changeExpiredStatusById(id, "test"));
 
         verify(userRepository, never()).saveAndFlush(any(User.class));
     }

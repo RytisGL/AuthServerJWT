@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 .requestMatchers("api/v1/user/oauth2/jwks").permitAll()
                                 .requestMatchers("api/v1/user/register").anonymous()
                                 .requestMatchers("api/v1/user/login").anonymous()
+                                .requestMatchers("api/v1/user/logout").anonymous()
                                 .requestMatchers("api/v1/user/token/refresh").anonymous()
                                 .anyRequest().authenticated()
                 ).sessionManagement(session -> session
