@@ -5,10 +5,13 @@ import com.auth.authserverjwt.exceptions.exceptionscutom.RefreshTknExpireExcepti
 import com.auth.authserverjwt.exceptions.exceptionscutom.UniqueEmailException;
 import com.auth.authserverjwt.exceptions.responses.BaseErrorResponse;
 import com.auth.authserverjwt.exceptions.responses.ValidationErrorResponse;
+import com.auth.authserverjwt.utils.Utils;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,6 +28,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.security.SignatureException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +43,11 @@ import static org.springframework.http.HttpStatus.*;
 @org.springframework.web.bind.annotation.ControllerAdvice
 public class ControllerAdvice extends ResponseEntityExceptionHandler {
 
+    private static final Logger loggerControllerAdvice = LoggerFactory.getLogger(ControllerAdvice.class);
+
     @ExceptionHandler(UniqueEmailException.class)
-    protected ResponseEntity<Object> handleUniqueDataException(WebRequest request) {
+    protected ResponseEntity<Object> handleUniqueDataException(WebRequest request, UniqueEmailException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(CONFLICT.value())
                 .error("Unique Email Exception")
@@ -51,7 +59,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
-    protected ResponseEntity<Object> handleEntityNotFound(WebRequest request) {
+    protected ResponseEntity<Object> handleEntityNotFound(WebRequest request, EntityNotFoundException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(NOT_FOUND.value())
                 .error("Entity Not Found Exception")
@@ -63,7 +72,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(NoSuchElementException.class)
-    protected ResponseEntity<Object> handleNoSuchElementException(WebRequest request) {
+    protected ResponseEntity<Object> handleNoSuchElementException(WebRequest request, NoSuchElementException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(NOT_FOUND.value())
                 .error("No Such Element Exception")
@@ -75,7 +85,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
-    protected ResponseEntity<Object> handleUsernameNotFoundException(WebRequest request) {
+    protected ResponseEntity<Object> handleUsernameNotFoundException(WebRequest request, UsernameNotFoundException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(NOT_FOUND.value())
                 .error("Username Not Found Exception")
@@ -87,7 +98,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    protected ResponseEntity<Object> handleSQLException(WebRequest request) {
+    protected ResponseEntity<Object> handleSQLException(WebRequest request, DataIntegrityViolationException ex) {
+        errorLoggerInfo(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(CONFLICT.value())
                 .error("Data Integrity Violation Exception")
@@ -99,7 +111,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(BadRequestException.class)
-    protected ResponseEntity<Object> handleBadRequestException(WebRequest request) {
+    protected ResponseEntity<Object> handleBadRequestException(WebRequest request, BadRequestException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(BAD_REQUEST.value())
                 .error("Bad Request Exception")
@@ -111,7 +124,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(RefreshTknExpireException.class)
-    protected ResponseEntity<Object> handleRefreshTknExpiredException(WebRequest request) {
+    protected ResponseEntity<Object> handleRefreshTknExpiredException(WebRequest request, RefreshTknExpireException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(FORBIDDEN.value())
                 .error("Refresh Tkn Expire Exception")
@@ -123,7 +137,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    protected ResponseEntity<Object> handleAccessDeniedException(WebRequest request) {
+    protected ResponseEntity<Object> handleAccessDeniedException(WebRequest request, AccessDeniedException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(FORBIDDEN.value())
                 .error("Access Denied Exception")
@@ -135,7 +150,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(ExpiredJwtException.class)
-    protected ResponseEntity<Object> handleExpiredJwtException(WebRequest request) {
+    protected ResponseEntity<Object> handleExpiredJwtException(WebRequest request, ExpiredJwtException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(UNAUTHORIZED.value())
                 .error("Expired Jwt Exception")
@@ -147,7 +163,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    protected ResponseEntity<Object> handleBadCredentialsException(WebRequest request) {
+    protected ResponseEntity<Object> handleBadCredentialsException(WebRequest request, BadCredentialsException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(UNAUTHORIZED.value())
                 .error("Bad Credentials Exception")
@@ -159,7 +176,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(LockedException.class)
-    protected ResponseEntity<Object> handleLockedException(WebRequest request) {
+    protected ResponseEntity<Object> handleLockedException(WebRequest request, LockedException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(UNAUTHORIZED.value())
                 .error("Locked Exception")
@@ -171,7 +189,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(DisabledException.class)
-    protected ResponseEntity<Object> handleDisabledException(WebRequest request) {
+    protected ResponseEntity<Object> handleDisabledException(WebRequest request, DisabledException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(UNAUTHORIZED.value())
                 .error("Disabled Exception")
@@ -184,7 +203,8 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
 
     //Manually locked account
     @ExceptionHandler(AccountExpiredException.class)
-    protected ResponseEntity<Object> handleAccountExpiredException(WebRequest request) {
+    protected ResponseEntity<Object> handleAccountExpiredException(WebRequest request, AccountExpiredException ex) {
+        errorLoggerDebug(ex);
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(UNAUTHORIZED.value())
                 .error("Account Expired Exception")
@@ -200,8 +220,9 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
             @NonNull MethodArgumentNotValidException ex,
             @NonNull HttpHeaders headers,
             @NonNull HttpStatusCode status,
-            @NonNull WebRequest request) {
-
+            @NonNull WebRequest request)
+    {
+        errorLoggerDebug(ex);
         ValidationErrorResponse validationErrorResponse = ValidationErrorResponse.builder()
                 .statusCode(BAD_REQUEST.value())
                 .error("Method Argument Not Valid Exception")
@@ -213,11 +234,25 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(validationErrorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    //SignatureException <---------------When JWT is corrupt
+    @ExceptionHandler(SignatureException.class)
+    protected ResponseEntity<Object> handleSignatureException(WebRequest request, SignatureException ex) {
+        errorLoggerInfo(ex);
+        BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
+                .statusCode(BAD_REQUEST.value())
+                .error("Signature Exception")
+                .message("Corrupt auth token")
+                .path(request.getDescription(false))
+                .build();
+
+        return new ResponseEntity<>(baseErrorResponse, BAD_REQUEST);
+    }
 
     @Order()
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<Object> handleUnspecifiedException(WebRequest request, Exception ex) {
+        loggerControllerAdvice.error("{} Exception has been throw {}, user: {}, message: {}",
+                LocalDateTime.now(), ex.getClass().getSimpleName(),
+                Utils.getSecurityContextHolderName(), ex.getMessage());
         BaseErrorResponse baseErrorResponse = BaseErrorResponse.builder()
                 .statusCode(INTERNAL_SERVER_ERROR.value())
                 .error("Exception")
@@ -234,5 +269,15 @@ public class ControllerAdvice extends ResponseEntityExceptionHandler {
             errors.add(fieldError.getField() + ": " + fieldError.getDefaultMessage());
         }
         return Map.of("errors", errors);
+    }
+
+    private void errorLoggerDebug(Exception ex) {
+        loggerControllerAdvice.debug("{} Exception has been throw {}, user: {}", LocalDateTime.now(), ex.getClass().getSimpleName(),
+                Utils.getSecurityContextHolderName());
+    }
+
+    private void errorLoggerInfo(Exception ex) {
+        loggerControllerAdvice.info("{} Exception has been throw {}, user: {}", LocalDateTime.now(), ex.getClass().getSimpleName(),
+                Utils.getSecurityContextHolderName());
     }
 }

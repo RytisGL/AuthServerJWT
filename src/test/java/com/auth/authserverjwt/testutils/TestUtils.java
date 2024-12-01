@@ -3,7 +3,6 @@ package com.auth.authserverjwt.testutils;
 import com.auth.authserverjwt.dto.AuthenticationRequest;
 import com.auth.authserverjwt.dto.PasswordChangeRequest;
 import com.auth.authserverjwt.dto.RegistrationRequest;
-import com.auth.authserverjwt.dto.TokenRefreshRequest;
 import com.auth.authserverjwt.entities.RefreshToken;
 import com.auth.authserverjwt.entities.User;
 import lombok.experimental.UtilityClass;
@@ -56,12 +55,6 @@ public class TestUtils {
                 .id(1L)
                 .expiresAt(Instant.now().plusSeconds(6000))
                 .createdAt(LocalDateTime.now())
-                .build();
-    }
-
-    public static TokenRefreshRequest getTokenRefreshRequest() {
-        return TokenRefreshRequest.builder()
-                .token("Test token")
                 .build();
     }
 }
